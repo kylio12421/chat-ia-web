@@ -339,6 +339,12 @@
 
     <script>
         let isTyping = false;
+        let chatHistory = [
+            {
+                role: "system",
+                content: "Tu es un assistant IA français utile, amical et professionnel. Réponds toujours en français de manière claire et concise."
+            }
+        ];
 
         function handleKeyPress(event) {
             if (event.key === 'Enter' && !event.shiftKey) {
@@ -352,14 +358,14 @@
             const message = input.value.trim();
             if (!message || isTyping) return;
 
-            // Afficher le message utilisateur
+            // Ajoute le message utilisateur à l'historique
+            chatHistory.push({ role: "user", content: message });
+
             displayMessage(message, 'user');
             input.value = '';
 
-            // Afficher l'indicateur de frappe
             showTypingIndicator();
 
-            // Désactiver le bouton pendant l'envoi
             const sendButton = document.getElementById('send-button');
             sendButton.disabled = true;
 
@@ -368,7 +374,7 @@
                 headers: {
                     'Content-Type': 'application/json',
                 },
-                body: JSON.stringify({message: message}),
+                body: JSON.stringify({ history: chatHistory }),
             })
             .then(response => response.json())
             .then(data => {
@@ -376,6 +382,8 @@
                 if (data.error) {
                     displayMessage('Désolé, une erreur s\'est produite. Veuillez réessayer.', 'ai');
                 } else {
+                    // Ajoute la réponse IA à l'historique
+                    chatHistory.push({ role: "assistant", content: data.response });
                     displayMessage(data.response, 'ai');
                 }
                 sendButton.disabled = false;
@@ -419,7 +427,6 @@
             indicator.style.display = 'none';
         }
 
-        // Focus automatique sur l'input au chargement
         document.addEventListener('DOMContentLoaded', function() {
             document.getElementById('user-input').focus();
         });

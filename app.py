@@ -30,58 +30,48 @@ def home():
 
 @app.route('/chat', methods=['POST'])
 def chat():
-    """Endpoint pour le chat avec l'IA"""
+    """Endpoint pour le chat avec l'IA avec mémoire de conversation"""
     try:
         data = request.get_json()
-        
-        if not data or 'message' not in data:
-            return jsonify({"error": "Message manquant"}), 400
-        
-        user_message = data['message'].strip()
-        
-        if not user_message:
-            return jsonify({"error": "Message vide"}), 400
-        
+        history = data.get('history', None)
+
+        if not history or not isinstance(history, list):
+            return jsonify({"error": "Historique de conversation manquant ou invalide"}), 400
+
         # Log de la requête
-        logger.info(f"Requête reçue: {user_message[:50]}...")
-        
-        # Appel à l'API OpenAI
+        logger.info(f"Requête reçue (dernier message): {history[-1]['content'][:50]}...")
+
+        # Appel à l'API OpenAI avec tout l'historique
         response = openai.chat.completions.create(
             model="gpt-3.5-turbo",
-            messages=[
-                {
-                    "role": "system", 
-                    "content": "Tu es un assistant IA français utile, amical et professionnel. Réponds toujours en français de manière claire et concise."
-                },
-                {"role": "user", "content": user_message}
-            ],
+            messages=history,
             max_tokens=1000,
             temperature=0.7
         )
-        
+
         ai_response = response.choices[0].message.content
-        
+
         # Log de la réponse
         logger.info(f"Réponse IA générée: {ai_response[:50]}...")
-        
+
         return jsonify({
             "response": ai_response,
             "timestamp": datetime.now().isoformat(),
             "model": "gpt-3.5-turbo"
         })
-        
+
     except openai.AuthenticationError:
         logger.error("Erreur d'authentification OpenAI")
         return jsonify({"error": "Erreur d'authentification avec l'API OpenAI"}), 401
-        
+
     except openai.RateLimitError:
         logger.error("Limite de taux OpenAI dépassée")
         return jsonify({"error": "Limite de requêtes dépassée. Veuillez réessayer plus tard."}), 429
-        
+
     except openai.APIError as e:
         logger.error(f"Erreur API OpenAI: {str(e)}")
         return jsonify({"error": "Erreur du service IA. Veuillez réessayer."}), 500
-        
+
     except Exception as e:
         logger.error(f"Erreur inattendue: {str(e)}")
         return jsonify({"error": "Une erreur inattendue s'est produite"}), 500
